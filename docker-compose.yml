@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Qdrant 向量数据库服务
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant_db
+    ports:
+      - "6333:6333" # Qdrant gRPC 端口
+      - "6334:6334" # Qdrant HTTP 端口 (用于仪表板/API)
+    volumes:
+      - qdrant_data:/qdrant/storage # 持久化 Qdrant 数据
+    restart: always # 容器异常退出或重启时自动重启
+
+  # MySQL MCP Server SSE 服务
+  mysql_mcp_server_sse:
+    build:
+      context: . # Dockerfile 的构建上下文是当前 docker-compose.yml 所在的根目录
+      dockerfile: mysql-mcp-server-sse/Dockerfile # 指定 MCP 的 Dockerfile 路径
+    container_name: mcp_server
+    ports:
+      - "5000:5000" # 映射 MCP 的端口。左侧是主机端口，右侧是容器端口
+    restart: always
+
+  # Xiaofan LangGraph 智能体服务 (Streamlit 应用)
+  xiaofan_agent:
+    build:
+      context: . # Dockerfile 的构建上下文是当前 docker-compose.yml 所在的根目录
+      dockerfile: xiaofan/Dockerfile # 指定智能体的 Dockerfile 路径
+    container_name: xiaofan_agent
+    ports:
+      - "8501:8501" # 映射 Streamlit 应用的端口
+    environment:
+      # 将 Qdrant 的主机名传递给智能体。在 Docker Compose 网络中，服务可以使用其服务名互相访问。
+      QDRANT_HOST: qdrant
+      # 将 MCP 的主机名和端口传递给智能体，如果智能体需要调用 MCP
+      MCP_HOST: mysql_mcp_server_sse # 使用 docker-compose.yml 中定义的服务名
+      MCP_PORT: 5000
+      # 从 .env 文件中加载敏感信息，例如 OpenAI API Key
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # 如果您的 xiaofan/.env 文件中有其他变量，也可以在这里引用
+      # YOUR_CUSTOM_VAR: ${YOUR_CUSTOM_VAR}
+    depends_on:
+      - qdrant # 确保 Qdrant 在智能体启动前启动
+      - mysql_mcp_server_sse # 确保 MCP 在智能体启动前启动 (如果智能体依赖 MCP)
+    restart: always
+
+volumes:
+  qdrant_data: # 为 Qdrant 数据定义一个持久化卷
