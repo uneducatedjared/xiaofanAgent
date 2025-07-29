@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY mysql-mcp-server-sse/ .
 
 # 自动生成 .env（如不存在则复制 example.env）
-RUN [ -f .env ] || cp example.env .env
+# RUN [ -f .env ] || cp example.env .env
 
 
 # 暴露端口（如需）
