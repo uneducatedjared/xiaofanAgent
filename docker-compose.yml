@@ -19,7 +19,7 @@ services:
       dockerfile: mysql-mcp-server-sse/Dockerfile # 指定 MCP 的 Dockerfile 路径
     container_name: mcp_server
     ports:
-      - "5000:5000" # 映射 MCP 的端口。左侧是主机端口，右侧是容器端口
+      - "3000:3000" # 映射 MCP 的端口。左侧是主机端口，右侧是容器端口
     restart: always
 
   # Xiaofan LangGraph 智能体服务 (Streamlit 应用)
@@ -35,11 +35,7 @@ services:
       QDRANT_HOST: qdrant
       # 将 MCP 的主机名和端口传递给智能体，如果智能体需要调用 MCP
       MCP_HOST: mysql_mcp_server_sse # 使用 docker-compose.yml 中定义的服务名
-      MCP_PORT: 5000
-      # 从 .env 文件中加载敏感信息，例如 OpenAI API Key
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      # 如果您的 xiaofan/.env 文件中有其他变量，也可以在这里引用
-      # YOUR_CUSTOM_VAR: ${YOUR_CUSTOM_VAR}
+      MCP_PORT: 3000
     depends_on:
       - qdrant # 确保 Qdrant 在智能体启动前启动
       - mysql_mcp_server_sse # 确保 MCP 在智能体启动前启动 (如果智能体依赖 MCP)
