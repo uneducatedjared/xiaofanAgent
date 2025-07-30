@@ -116,13 +116,13 @@ def query_knowledgebase(state: AgentState) -> AgentState:
     print(f"Handling knowledge base query for: {user_input}")
     try:
         # 1. Embed the user's query
-        query_vector = list(embedding_model.embed(["query: " + user_input]))[0]
+        query_vector = embedding_model.encode([user_input], normalize_embeddings=True)[0]
         print(query_vector)
         # 2. Search Qdrant for relevant documents
         search_result = client.search(
             collection_name=collection_name,  # 指定要搜索的集合
             query_vector=query_vector,         # 查询向量（用户问题的向量表示）
-            limit=3,                           # 返回最相似的3个结果
+            limit=5,                           # 返回最相似的3个结果
             append_payload=True                # 是否返回向量附带的元数据（如文本内容、来源）
         )
         # 3. Extract relevant content

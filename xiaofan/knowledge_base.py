@@ -1,17 +1,19 @@
 from qdrant_client import QdrantClient, models
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from fastembed import TextEmbedding
+from sentence_transformers import SentenceTransformer
 from glob import glob
 import os
 from tqdm import tqdm
 
 
 collection_name = "knowledge_base"
-model_name = "BAAI/bge-small-en-v1.5"
+model_name = "./bge-small-zh-v1.5"
 
 
 client = QdrantClient(url="http://localhost:6333")
-embedding_model = TextEmbedding(model_name=model_name, max_length=512)
+print(f"正在加载模型 {model_name}...")
+embedding_model = SentenceTransformer(model_name, trust_remote_code=True)
+print(f"模型 {model_name} 加载完成")
 
 def initialize_qdrant_knowledge_base(directory):
     markdown_files = glob(os.path.join(directory, "**/*.md"), recursive=True)
@@ -23,7 +25,7 @@ def initialize_qdrant_knowledge_base(directory):
         print(f"集合 {collection_name} 已存在，将添加新数据。")
     except:
         # 集合不存在，创建它
-        vector_size = 384
+        vector_size = 512
         client.create_collection(
             collection_name=collection_name,
             vectors_config=models.VectorParams(size=vector_size, distance=models.Distance.COSINE),
@@ -55,17 +57,19 @@ def initialize_qdrant_knowledge_base(directory):
             chunk_overlap=200,
             length_function=len,
         )
+
         docs = text_splitter.create_documents([content])
+
         print(f"文件 '{file_path}' 已分割成 {len(docs)} 个文本块。")
+        texts = [doc.page_content for doc in docs]
+        vectors = embedding_model.encode(texts, normalize_embeddings=True)
         
         # 为当前文件的文本块生成唯一 ID
-        for i, doc in enumerate(docs):
-            #doc.page_content 原始内容，文本对应的向量
-            vector = list(embedding_model.embed(doc.page_content))[0]
+        for i, (doc, vector) in enumerate(zip(docs, vectors)):
             all_points.append(
                 models.PointStruct(
                     id=global_point_id + i,  # 使用全局唯一 ID
-                    vector=vector,
+                    vector=vector.tolist(),
                     payload={
                         "text": doc.page_content,
                         "source": file_path  # 记录来源文件
